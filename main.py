@@ -1,8 +1,8 @@
 import pygame
-import random
-from config import LARGURA, ALTURA, FPS, TITULO, VERMELHO, SOM_EXPLOSAO, SOM_DANO, tocar_som, Tiro
+from config import LARGURA, ALTURA, FPS, TITULO, SOM_FALHA, SOM_VITORIA, tocar_som
 from mapa import Mapa
 from jogador import Jogador
+from inimigo import Boneca
 
 def main():
     pygame.init()
@@ -13,110 +13,60 @@ def main():
 
     def iniciar_partida():
         jogador = Jogador()
-        grupo_jogador = pygame.sprite.GroupSingle(jogador)
-        inimigos = pygame.sprite.Group()
-        tiros_jogador = pygame.sprite.Group()
-        tiros_inimigos = pygame.sprite.Group()
-        grupo_boss = pygame.sprite.GroupSingle()
-        mapa.carregar_fase(1, inimigos, grupo_boss)
-        return jogador, grupo_jogador, inimigos, tiros_jogador, tiros_inimigos, grupo_boss, 0, 1, "JOGANDO"
+        boneca = Boneca()
+        sprites = pygame.sprite.Group(jogador, boneca)
+        return jogador, boneca, sprites, 0, 1, 35.0, "JOGANDO"
 
-    jogador, grupo_jogador, inimigos, tiros_jogador, tiros_inimigos, grupo_boss, pontos, fase, estado = iniciar_partida()
+    jogador, boneca, sprites, pontos, fase, tempo_restante, estado_jogo = iniciar_partida()
 
     rodando = True
     while rodando:
-        clock.tick(FPS)
+        dt = clock.tick(FPS) / 1000.0
+
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 rodando = False
             if evento.type == pygame.KEYDOWN:
-                if estado == "JOGANDO" and evento.key == pygame.K_SPACE:
-                    tiro = jogador.atirar()
-                    if tiro:
-                        tiros_jogador.add(tiro)
-                elif estado in ["GAME_OVER", "VITORIA"] and evento.key == pygame.K_r:
-                    jogador, grupo_jogador, inimigos, tiros_jogador, tiros_inimigos, grupo_boss, pontos, fase, estado = iniciar_partida()
+                if estado_jogo in ["GAME_OVER", "VITORIA"] and evento.key == pygame.K_r:
+                    jogador, boneca, sprites, pontos, fase, tempo_restante, estado_jogo = iniciar_partida()
 
-        mapa.atualizar_fundo()
+        if estado_jogo == "JOGANDO":
+            tempo_restante -= dt
+            if tempo_restante <= 0:
+                tempo_restante = 0
+                estado_jogo = "GAME_OVER"
 
-        if estado == "JOGANDO":
-            grupo_jogador.update()
-            tiros_jogador.update()
-            tiros_inimigos.update()
-            inimigos.update()
-            grupo_boss.update()
+            boneca.update(fase)
+            jogador.update(fase)
 
-            # Movimento em bloco dos inimigos
-            inverter = False
-            for inimigo in inimigos:
-                if inimigo.rect.right >= LARGURA - 10 or inimigo.rect.left <= 10:
-                    inverter = True
-                if inimigo.rect.bottom >= ALTURA - 35:
-                    estado = "GAME_OVER"
-                if random.random() < 0.002 * fase:
-                    tiros_inimigos.add(Tiro(inimigo.rect.centerx, inimigo.rect.bottom, 5, VERMELHO))
+            # Verifica se o jogador se mexeu no sinal vermelho
+            if jogador.movendo and boneca.estado == "VERMELHO":
+                tocar_som(SOM_FALHA)
+                jogador.vidas -= 1
+                jogador.voltar_inicio()
+                if jogador.vidas <= 0:
+                    estado_jogo = "GAME_OVER"
 
-            if inverter:
-                for inimigo in inimigos:
-                    inimigo.velocidade *= -1
-                    inimigo.rect.y += 15
-
-            # Ataque do Chefão
-            if grupo_boss.sprite and random.random() < 0.04:
-                boss = grupo_boss.sprite
-                tiros_inimigos.add(Tiro(boss.rect.centerx - 20, boss.rect.bottom, 6, VERMELHO))
-                tiros_inimigos.add(Tiro(boss.rect.centerx + 20, boss.rect.bottom, 6, VERMELHO))
-
-            # Colisões: Tiros do jogador nos inimigos
-            acertos = pygame.sprite.groupcollide(inimigos, tiros_jogador, True, True)
-            if acertos:
-                tocar_som(SOM_EXPLOSAO)
-                pontos += len(acertos) * 100
-
-            # Colisões: Tiros do jogador no Chefão
-            if grupo_boss.sprite:
-                hits_boss = pygame.sprite.spritecollide(grupo_boss.sprite, tiros_jogador, True)
-                for _ in hits_boss:
-                    tocar_som(SOM_EXPLOSAO)
-                    grupo_boss.sprite.hp -= 1
-                    pontos += 50
-                    if grupo_boss.sprite.hp <= 0:
-                        grupo_boss.empty()
-                        pontos += 1000
-                        estado = "VITORIA"
-
-            # Dano no jogador
-            if jogador.invencivel == 0:
-                atingido_tiro = pygame.sprite.spritecollide(jogador, tiros_inimigos, True)
-                atingido_nave = pygame.sprite.spritecollide(jogador, inimigos, True)
-                if atingido_tiro or atingido_nave:
-                    tocar_som(SOM_DANO)
-                    jogador.vidas -= 1
-                    jogador.invencivel = 60
-                    if jogador.vidas <= 0:
-                        estado = "GAME_OVER"
-
-            # Avançar de fase
-            if estado == "JOGANDO" and len(inimigos) == 0 and not grupo_boss.sprite and fase < 3:
-                fase += 1
-                tiros_inimigos.empty()
-                mapa.carregar_fase(fase, inimigos, grupo_boss)
+            # Verifica se cruzou a linha de chegada
+            if jogador.x >= mapa.linha_chegada:
+                tocar_som(SOM_VITORIA)
+                pontos += int(tempo_restante * 20) + (fase * 200)
+                if fase < 3:
+                    fase += 1
+                    jogador.voltar_inicio()
+                    boneca.resetar()
+                    tempo_restante = max(20.0, 35.0 - (fase * 5))
+                else:
+                    estado_jogo = "VITORIA"
 
         # Renderização
-        mapa.desenhar_fundo(tela)
+        mapa.desenhar_pista(tela)
+        boneca.desenhar_radar(tela)
+        sprites.draw(tela)
+        mapa.desenhar_hud(tela, boneca.estado, tempo_restante, pontos, jogador.vidas, fase)
 
-        if jogador.invencivel == 0 or (jogador.invencivel // 5) % 2 == 0:
-            grupo_jogador.draw(tela)
-
-        inimigos.draw(tela)
-        grupo_boss.draw(tela)
-        tiros_jogador.draw(tela)
-        tiros_inimigos.draw(tela)
-
-        mapa.desenhar_hud(tela, pontos, jogador.vidas, fase, grupo_boss.sprite)
-
-        if estado in ["GAME_OVER", "VITORIA"]:
-            mapa.desenhar_tela_final(tela, estado, pontos)
+        if estado_jogo in ["GAME_OVER", "VITORIA"]:
+            mapa.desenhar_tela_final(tela, estado_jogo, pontos)
 
         pygame.display.flip()
 

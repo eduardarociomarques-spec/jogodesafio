@@ -6,18 +6,19 @@ import random
 # Configurações da Tela
 LARGURA, ALTURA = 640, 480
 FPS = 60
-TITULO = "Desafio CCM Elias Abrahão - Batalha Espacial"
+TITULO = "Batatinha Frita 1, 2, 3 - Desafio CCM"
 
 # Cores Retrô
-PRETO = (15, 15, 30)
-BRANCO = (255, 255, 255)
+AREIA = (230, 200, 140)
+TERRA_ESCURA = (190, 155, 100)
+VERMELHO = (235, 50, 70)
+VERDE = (50, 210, 90)
 AMARELO = (255, 220, 50)
-AZUL_NAVE = (50, 180, 255)
-VERMELHO = (255, 60, 80)
-VERDE_ALIEN = (60, 230, 100)
-ROXO_BOSS = (180, 50, 230)
+BRANCO = (255, 255, 255)
+PRETO = (20, 20, 30)
+LARANJA = (255, 130, 40)
 
-# Gerador de Sons 8-bit (100% nativo, sem precisar de numpy)
+# Gerador de Sons 8-bit
 def criar_som(frequencia, duracao, tipo="quadrada"):
     try:
         if not pygame.mixer.get_init():
@@ -48,12 +49,13 @@ def tocar_som(som):
         except Exception:
             pass
 
-SOM_TIRO = criar_som(600, 0.1, "quadrada")
-SOM_EXPLOSAO = criar_som(120, 0.25, "ruido")
-SOM_DANO = criar_som(150, 0.3, "quadrada")
+SOM_PASSO = criar_som(300, 0.05, "quadrada")
+SOM_ALERTA = criar_som(750, 0.25, "quadrada")
+SOM_FALHA = criar_som(140, 0.35, "ruido")
+SOM_VITORIA = criar_som(520, 0.4, "quadrada")
 
-# Gerador de Pixel Art por Matriz
-def criar_sprite(matriz, cores, escala=3):
+# Gerador de Pixel Art
+def criar_sprite(matriz, cores, escala=4):
     altura = len(matriz) * escala
     largura = len(matriz[0]) * escala
     superficie = pygame.Surface((largura, altura), pygame.SRCALPHA)
@@ -67,53 +69,51 @@ def criar_sprite(matriz, cores, escala=3):
                 )
     return superficie
 
-MATRIZ_NAVE = [
-    "     1     ",
-    "    111    ",
-    "    121    ",
-    "  1 111 1  ",
-    "  1111111  ",
-    " 113111311 ",
-    "11111111111",
-    "1 11   11 1"
+MATRIZ_JOGADOR = [
+    "  1111  ",
+    "  1221  ",
+    "  1111  ",
+    " 333333 ",
+    "3 3333 3",
+    "  3333  ",
+    "  4  4  ",
+    "  4  4  "
 ]
 
-MATRIZ_ALIEN = [
-    "  1     1  ",
-    "   1   1   ",
-    "  1111111  ",
-    " 112111211 ",
-    "11111111111",
-    "1 1111111 1",
-    "1 1     1 1",
-    "   11 11   "
+MATRIZ_BONECA_COSTAS = [
+    "  111111  ",
+    " 11111111 ",
+    " 11111111 ",
+    "  111111  ",
+    " 22222222 ",
+    "2222222222",
+    " 33333333 ",
+    " 33333333 ",
+    "  44  44  "
 ]
 
-MATRIZ_BOSS = [
-    "    11111111    ",
-    "  111111111111  ",
-    " 11221111112211 ",
-    "1112211111122111",
-    "1111111331111111",
-    " 11111111111111 ",
-    "  11 11  11 11  ",
-    " 11  11  11  11 "
+MATRIZ_BONECA_FRENTE = [
+    "  111111  ",
+    " 12222221 ",
+    " 12522521 ",
+    "  226622  ",
+    " 22222222 ",
+    "2233333322",
+    " 33333333 ",
+    " 33333333 ",
+    "  44  44  "
 ]
 
-SPRITE_NAVE = criar_sprite(MATRIZ_NAVE, {"1": AZUL_NAVE, "2": BRANCO, "3": VERMELHO}, 4)
-SPRITE_ALIEN = criar_sprite(MATRIZ_ALIEN, {"1": VERDE_ALIEN, "2": PRETO}, 3)
-SPRITE_BOSS = criar_sprite(MATRIZ_BOSS, {"1": ROXO_BOSS, "2": AMARELO, "3": VERMELHO}, 5)
+CORES_JOGADOR = {"1": (130, 80, 40), "2": (255, 210, 170), "3": VERDE, "4": BRANCO}
+CORES_BONECA = {
+    "1": (40, 30, 30),
+    "2": (255, 215, 180),
+    "3": LARANJA,
+    "4": BRANCO,
+    "5": VERMELHO,
+    "6": VERMELHO
+}
 
-# Classe de Projétil
-class Tiro(pygame.sprite.Sprite):
-    def __init__(self, x, y, vel_y, cor):
-        super().__init__()
-        self.image = pygame.Surface((4, 12))
-        self.image.fill(cor)
-        self.rect = self.image.get_rect(center=(x, y))
-        self.vel_y = vel_y
-
-    def update(self):
-        self.rect.y += self.vel_y
-        if self.rect.bottom < 0 or self.rect.top > ALTURA:
-            self.kill()
+SPRITE_JOGADOR = criar_sprite(MATRIZ_JOGADOR, CORES_JOGADOR, 4)
+SPRITE_BONECA_COSTAS = criar_sprite(MATRIZ_BONECA_COSTAS, CORES_BONECA, 5)
+SPRITE_BONECA_FRENTE = criar_sprite(MATRIZ_BONECA_FRENTE, CORES_BONECA, 5)
