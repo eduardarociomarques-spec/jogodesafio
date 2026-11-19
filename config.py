@@ -1,10 +1,9 @@
 import pygame
-import numpy as np
+import math
+import struct
+import random
 
-pygame.init()
-pygame.mixer.init(frequency=22050, size=-16, channels=1)
-
-# Tela e FPS
+# Configurações da Tela
 LARGURA, ALTURA = 640, 480
 FPS = 60
 TITULO = "Desafio CCM Elias Abrahão - Batalha Espacial"
@@ -18,19 +17,36 @@ VERMELHO = (255, 60, 80)
 VERDE_ALIEN = (60, 230, 100)
 ROXO_BOSS = (180, 50, 230)
 
-# Gerador de Sons 8-bit
+# Gerador de Sons 8-bit (100% nativo, sem precisar de numpy)
 def criar_som(frequencia, duracao, tipo="quadrada"):
-    sample_rate = 22050
-    n_samples = int(sample_rate * duracao)
-    t = np.linspace(0, duracao, n_samples, False)
-    if tipo == "quadrada":
-        onda = np.sign(np.sin(2 * np.pi * frequencia * t))
-    else:
-        onda = np.random.uniform(-1, 1, n_samples)
+    try:
+        if not pygame.mixer.get_init():
+            pygame.mixer.init(frequency=22050, size=-16, channels=1)
+        sample_rate = 22050
+        n_samples = int(sample_rate * duracao)
+        buffer = bytearray()
 
-    envelope = np.linspace(1, 0, n_samples)
-    audio = (onda * envelope * 32767 * 0.2).astype(np.int16)
-    return pygame.sndarray.make_sound(audio)
+        for i in range(n_samples):
+            t = i / sample_rate
+            if tipo == "quadrada":
+                valor = 1.0 if math.sin(2 * math.pi * frequencia * t) >= 0 else -1.0
+            else:
+                valor = random.uniform(-1.0, 1.0)
+
+            envelope = 1.0 - (i / n_samples)
+            amostra = int(valor * envelope * 32767 * 0.2)
+            buffer.extend(struct.pack("<h", amostra))
+
+        return pygame.mixer.Sound(buffer=bytes(buffer))
+    except Exception:
+        return None
+
+def tocar_som(som):
+    if som:
+        try:
+            som.play()
+        except Exception:
+            pass
 
 SOM_TIRO = criar_som(600, 0.1, "quadrada")
 SOM_EXPLOSAO = criar_som(120, 0.25, "ruido")
@@ -88,7 +104,7 @@ SPRITE_NAVE = criar_sprite(MATRIZ_NAVE, {"1": AZUL_NAVE, "2": BRANCO, "3": VERME
 SPRITE_ALIEN = criar_sprite(MATRIZ_ALIEN, {"1": VERDE_ALIEN, "2": PRETO}, 3)
 SPRITE_BOSS = criar_sprite(MATRIZ_BOSS, {"1": ROXO_BOSS, "2": AMARELO, "3": VERMELHO}, 5)
 
-# Classe de Projétil Compartilhada
+# Classe de Projétil
 class Tiro(pygame.sprite.Sprite):
     def __init__(self, x, y, vel_y, cor):
         super().__init__()

@@ -1,10 +1,11 @@
 import pygame
 import random
-from config import LARGURA, ALTURA, FPS, TITULO, VERMELHO, SOM_EXPLOSAO, SOM_DANO, Tiro
+from config import LARGURA, ALTURA, FPS, TITULO, VERMELHO, SOM_EXPLOSAO, SOM_DANO, tocar_som, Tiro
 from mapa import Mapa
 from jogador import Jogador
 
 def main():
+    pygame.init()
     tela = pygame.display.set_mode((LARGURA, ALTURA))
     pygame.display.set_caption(TITULO)
     clock = pygame.time.Clock()
@@ -69,14 +70,14 @@ def main():
             # Colisões: Tiros do jogador nos inimigos
             acertos = pygame.sprite.groupcollide(inimigos, tiros_jogador, True, True)
             if acertos:
-                SOM_EXPLOSAO.play()
+                tocar_som(SOM_EXPLOSAO)
                 pontos += len(acertos) * 100
 
             # Colisões: Tiros do jogador no Chefão
             if grupo_boss.sprite:
                 hits_boss = pygame.sprite.spritecollide(grupo_boss.sprite, tiros_jogador, True)
                 for _ in hits_boss:
-                    SOM_EXPLOSAO.play()
+                    tocar_som(SOM_EXPLOSAO)
                     grupo_boss.sprite.hp -= 1
                     pontos += 50
                     if grupo_boss.sprite.hp <= 0:
@@ -89,7 +90,7 @@ def main():
                 atingido_tiro = pygame.sprite.spritecollide(jogador, tiros_inimigos, True)
                 atingido_nave = pygame.sprite.spritecollide(jogador, inimigos, True)
                 if atingido_tiro or atingido_nave:
-                    SOM_DANO.play()
+                    tocar_som(SOM_DANO)
                     jogador.vidas -= 1
                     jogador.invencivel = 60
                     if jogador.vidas <= 0:

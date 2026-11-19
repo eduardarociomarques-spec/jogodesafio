@@ -1,5 +1,5 @@
 import pygame
-from config import LARGURA, ALTURA, AMARELO, SPRITE_NAVE, SOM_TIRO, Tiro
+from config import LARGURA, ALTURA, AMARELO, SPRITE_NAVE, SOM_TIRO, tocar_som, Tiro
 
 class Jogador(pygame.sprite.Sprite):
     def __init__(self):
@@ -27,7 +27,7 @@ class Jogador(pygame.sprite.Sprite):
 
     def atirar(self):
         if self.cooldown == 0:
-            SOM_TIRO.play()
+            tocar_som(SOM_TIRO)
             self.cooldown = 18
             return Tiro(self.rect.centerx, self.rect.top, -8, AMARELO)
         return None
